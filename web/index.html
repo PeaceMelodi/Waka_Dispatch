@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waka Dispatch</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          coral: {
+            50:  '#fff2f1',
+            100: '#ffe1df',
+            200: '#ffc4c1',
+            300: '#ffa19d',
+            400: '#ff8380',
+            500: '#FF6865',
+            600: '#f04e4b',
+            700: '#c93a37',
+            800: '#9c2b29',
+            900: '#6f1e1d'
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .fade-in { animation: fadeIn 0.25s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal-in { animation: modalIn 0.2s ease-out; }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #f3f4f6; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-coral-500 flex items-center justify-center shadow-md shadow-coral-500/30">
+        <i class="fa-solid fa-motorcycle text-white text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight">Waka Dispatch</h1>
+        <p class="text-xs text-gray-500">Last mile delivery control</p>
+      </div>
+    </div>
+    <div id="ws-indicator" class="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-gray-100 border border-gray-200">
+      <span class="w-2 h-2 rounded-full bg-gray-400" id="ws-dot"></span>
+      <span id="ws-label" class="text-gray-500 font-medium">Connecting</span>
+    </div>
+  </div>
+</header>
+
+<!-- Tabs -->
+<nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+  <div class="flex gap-2 border-b border-gray-200">
+    <button data-tab="riders" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-coral-500 text-coral-500 transition">
+      <i class="fa-solid fa-users mr-2"></i>Riders
+    </button>
+    <button data-tab="orders" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition">
+      <i class="fa-solid fa-box mr-2"></i>Orders
+    </button>
+    <button data-tab="deliveries" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition">
+      <i class="fa-solid fa-truck-fast mr-2"></i>Active Deliveries
+    </button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- ============ RIDERS TAB ============ -->
+  <section id="tab-riders" class="tab-content">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Register form -->
+      <div class="lg:col-span-1">
+        <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-user-plus text-coral-500"></i>
+            <h2 class="font-semibold">Register Rider</h2>
+          </div>
+          <p class="text-xs text-gray-500 mb-5">Add a new rider to the fleet.</p>
+
+          <form id="rider-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Full Name</label>
+              <input name="name" required placeholder="e.g. Chidi Okeke"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Phone</label>
+              <input name="phone" required placeholder="e.g. 08012345678"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+            </div>
+            <button type="submit" id="rider-submit"
+              class="w-full bg-coral-500 hover:bg-coral-600 text-white text-sm font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 shadow-md shadow-coral-500/20">
+              <i class="fa-solid fa-plus"></i>
+              <span>Add Rider</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Riders list -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-users text-coral-500"></i>Fleet
+          </h2>
+          <button id="refresh-riders" class="text-xs text-gray-500 hover:text-coral-500 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-rotate"></i>Refresh
+          </button>
+        </div>
+        <div id="riders-list" class="space-y-3">
+          <div class="text-center py-12 text-gray-400 text-sm">
+            <i class="fa-solid fa-spinner spin text-2xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORDERS TAB ============ -->
+  <section id="tab-orders" class="tab-content hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Create order form -->
+      <div class="lg:col-span-1">
+        <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-box-open text-coral-500"></i>
+            <h2 class="font-semibold">New Order</h2>
+          </div>
+          <p class="text-xs text-gray-500 mb-5">Auto matches the nearest rider.</p>
+
+          <form id="order-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Customer Name</label>
+              <input name="customer_name" required placeholder="e.g. Jane Smith"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Pickup Coordinates</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input name="pickup_lat" type="number" step="any" required placeholder="Lat"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+                <input name="pickup_lng" type="number" step="any" required placeholder="Lng"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1.5">Dropoff Coordinates</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input name="dropoff_lat" type="number" step="any" required placeholder="Lat"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+                <input name="dropoff_lng" type="number" step="any" required placeholder="Lng"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+              </div>
+            </div>
+            <button type="submit" id="order-submit"
+              class="w-full bg-coral-500 hover:bg-coral-600 text-white text-sm font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 shadow-md shadow-coral-500/20">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Create Order</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Orders list -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-box text-coral-500"></i>Orders
+          </h2>
+          <button id="refresh-orders" class="text-xs text-gray-500 hover:text-coral-500 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-rotate"></i>Refresh
+          </button>
+        </div>
+        <div id="orders-list" class="space-y-3">
+          <div class="text-center py-12 text-gray-400 text-sm">
+            <i class="fa-solid fa-spinner spin text-2xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DELIVERIES TAB ============ -->
+  <section id="tab-deliveries" class="tab-content hidden">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-truck-fast text-coral-500"></i>Active Deliveries
+        </h2>
+        <p class="text-xs text-gray-500 mt-1">Advance each delivery through its lifecycle.</p>
+      </div>
+      <button id="refresh-deliveries" class="text-xs text-gray-500 hover:text-coral-500 flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-rotate"></i>Refresh
+      </button>
+    </div>
+    <div id="deliveries-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="text-center py-12 text-gray-400 text-sm md:col-span-2">
+        <i class="fa-solid fa-spinner spin text-2xl"></i>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Activity Feed -->
+<aside class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+  <div class="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-satellite-dish text-coral-500 text-xs animate-pulse"></i>
+        <h3 class="text-sm font-semibold">Activity Feed</h3>
+      </div>
+      <button id="clear-events" class="text-xs text-gray-500 hover:text-gray-800 transition">
+        <i class="fa-solid fa-trash-can mr-1"></i>Clear
+      </button>
+    </div>
+    <div id="event-feed" class="p-4 max-h-64 overflow-y-auto text-xs font-mono space-y-1.5">
+      <p class="text-gray-400">Waiting for events…</p>
+    </div>
+  </div>
+</aside>
+
+<!-- =====================================================================
+     MODALS
+     ===================================================================== -->
+
+<!-- Rider Location Modal -->
+<div id="modal-location" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm modal-in">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-coral-50 flex items-center justify-center">
+          <i class="fa-solid fa-location-crosshairs text-coral-500 text-sm"></i>
+        </div>
+        <h3 class="font-semibold text-sm">Update Location</h3>
+      </div>
+      <button data-close class="text-gray-400 hover:text-gray-700 transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form id="location-form" class="p-5 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1.5">Latitude</label>
+          <input name="lat" type="number" step="any" required placeholder="6.5244"
+            class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1.5">Longitude</label>
+          <input name="lng" type="number" step="any" required placeholder="3.3792"
+            class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20 transition">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" data-close
+          class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-lg transition">
+          Cancel
+        </button>
+        <button type="submit" id="location-submit"
+          class="flex-1 bg-coral-500 hover:bg-coral-600 text-white text-sm font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 shadow-md shadow-coral-500/20">
+          <i class="fa-solid fa-check"></i>Save
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Rider Status Modal -->
+<div id="modal-status" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm modal-in">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-coral-50 flex items-center justify-center">
+          <i class="fa-solid fa-power-off text-coral-500 text-sm"></i>
+        </div>
+        <h3 class="font-semibold text-sm">Change Status</h3>
+      </div>
+      <button data-close class="text-gray-400 hover:text-gray-700 transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form id="status-form" class="p-5 space-y-3">
+      <label class="block text-xs font-medium text-gray-600 mb-1">Select new status</label>
+      <div class="space-y-2">
+        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-coral-300 hover:bg-coral-50/50 cursor-pointer transition">
+          <input type="radio" name="status" value="available" class="accent-coral-500">
+          <i class="fa-solid fa-circle-check text-emerald-500"></i>
+          <span class="text-sm font-medium">Available</span>
+        </label>
+        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-coral-300 hover:bg-coral-50/50 cursor-pointer transition">
+          <input type="radio" name="status" value="busy" class="accent-coral-500">
+          <i class="fa-solid fa-clock text-amber-500"></i>
+          <span class="text-sm font-medium">Busy</span>
+        </label>
+        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-coral-300 hover:bg-coral-50/50 cursor-pointer transition">
+          <input type="radio" name="status" value="offline" class="accent-coral-500">
+          <i class="fa-solid fa-circle-xmark text-gray-400"></i>
+          <span class="text-sm font-medium">Offline</span>
+        </label>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" data-close
+          class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-lg transition">
+          Cancel
+        </button>
+        <button type="submit" id="status-submit"
+          class="flex-1 bg-coral-500 hover:bg-coral-600 text-white text-sm font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 shadow-md shadow-coral-500/20">
+          <i class="fa-solid fa-check"></i>Update
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="modal-confirm" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm modal-in">
+    <div class="p-6 text-center">
+      <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+        <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+      </div>
+      <h3 id="confirm-title" class="font-semibold text-base mb-2">Are you sure?</h3>
+      <p id="confirm-message" class="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
+      <div class="flex gap-2">
+        <button type="button" data-close
+          class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-lg transition">
+          Cancel
+        </button>
+        <button type="button" id="confirm-ok"
+          class="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-[60]"></div>
+
+<script>
+// =====================================================================
+// CONFIG
+// =====================================================================
+const API_BASE = `${location.protocol}//${location.host}`;
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/dispatch`;
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+function toast(message, type = 'info') {
+  const colors = {
+    success: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    error:   'bg-red-50 border-red-200 text-red-700',
+    info:    'bg-blue-50 border-blue-200 text-blue-700'
+  };
+  const icons = {
+    success: 'fa-circle-check text-emerald-500',
+    error:   'fa-circle-exclamation text-red-500',
+    info:    'fa-circle-info text-blue-500'
+  };
+  const el = document.createElement('div');
+  el.className = `fade-in border rounded-xl px-4 py-3 text-sm flex items-center gap-3 shadow-lg bg-white ${colors[type]}`;
+  el.innerHTML = `<i class="fa-solid ${icons[type]}"></i><span>${message}</span>`;
+  $('#toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function statusBadge(status) {
+  const map = {
+    available:   'bg-emerald-50 text-emerald-600 border-emerald-200',
+    busy:        'bg-amber-50 text-amber-600 border-amber-200',
+    offline:     'bg-gray-100 text-gray-500 border-gray-200',
+    pending:     'bg-yellow-50 text-yellow-600 border-yellow-200',
+    assigned:    'bg-blue-50 text-blue-600 border-blue-200',
+    picked_up:   'bg-indigo-50 text-indigo-600 border-indigo-200',
+    in_transit:  'bg-purple-50 text-purple-600 border-purple-200',
+    delivered:   'bg-emerald-50 text-emerald-600 border-emerald-200',
+    cancelled:   'bg-red-50 text-red-600 border-red-200'
+  };
+  const cls = map[status] || 'bg-gray-100 text-gray-500 border-gray-200';
+  return `<span class="text-xs px-2.5 py-1 rounded-full border ${cls} font-medium">${status.replace('_', ' ')}</span>`;
+}
+
+// =====================================================================
+// MODAL CONTROLLER
+// =====================================================================
+function openModal(id) {
+  const m = $(`#${id}`);
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  const m = $(`#${id}`);
+  m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+// Close buttons and overlay click
+$$('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const modal = btn.closest('[id^="modal-"]');
+    if (modal) closeModal(modal.id);
+  });
+});
+
+$$('[id^="modal-"]').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal(modal.id);
+  });
+});
+
+// Escape key closes any open modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    $$('[id^="modal-"]').forEach(m => {
+      if (!m.classList.contains('hidden')) closeModal(m.id);
+    });
+  }
+});
+
+// Confirm modal (reusable)
+let confirmResolve = null;
+function showConfirm(title, message, confirmText = 'Confirm') {
+  $('#confirm-title').textContent = title;
+  $('#confirm-message').textContent = message;
+  $('#confirm-ok').textContent = confirmText;
+  openModal('modal-confirm');
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+  });
+}
+
+$('#confirm-ok').addEventListener('click', () => {
+  closeModal('modal-confirm');
+  if (confirmResolve) confirmResolve(true);
+  confirmResolve = null;
+});
+
+// If user cancels confirm (via close/overlay), resolve false
+$$('#modal-confirm [data-close]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (confirmResolve) confirmResolve(false);
+    confirmResolve = null;
+  });
+});
+
+// =====================================================================
+// TABS
+// =====================================================================
+$$('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    $$('.tab-btn').forEach(b => {
+      b.classList.remove('border-coral-500', 'text-coral-500');
+      b.classList.add('border-transparent', 'text-gray-500');
+    });
+    btn.classList.remove('border-transparent', 'text-gray-500');
+    btn.classList.add('border-coral-500', 'text-coral-500');
+
+    $$('.tab-content').forEach(c => c.classList.add('hidden'));
+    $(`#tab-${tab}`).classList.remove('hidden');
+  });
+});
+
+// =====================================================================
+// WEBSOCKET
+// =====================================================================
+let ws;
+
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    $('#ws-dot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+    $('#ws-label').textContent = 'Online';
+    $('#ws-label').className = 'text-emerald-600 font-medium';
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      logEvent(msg);
+      if (msg.type === 'rider_location') loadRiders();
+      if (msg.type === 'order_status') { loadOrders(); loadDeliveries(); }
+    } catch (err) {}
+  };
+
+  ws.onclose = () => {
+    $('#ws-dot').className = 'w-2 h-2 rounded-full bg-red-500';
+    $('#ws-label').textContent = 'Offline';
+    $('#ws-label').className = 'text-red-500 font-medium';
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => {
+    $('#ws-dot').className = 'w-2 h-2 rounded-full bg-red-500';
+    $('#ws-label').textContent = 'Error';
+  };
+}
+
+function logEvent(msg) {
+  const feed = $('#event-feed');
+  if (feed.querySelector('.text-gray-400')) feed.innerHTML = '';
+  const time = new Date().toLocaleTimeString();
+  const icon = msg.type === 'rider_location' ? 'fa-motorcycle' : 'fa-box';
+  const color = msg.type === 'rider_location' ? 'text-coral-500' : 'text-blue-500';
+  const line = document.createElement('div');
+  line.className = 'flex items-start gap-2 text-gray-700';
+  line.innerHTML = `
+    <span class="text-gray-400 shrink-0">${time}</span>
+    <i class="fa-solid ${icon} ${color} mt-0.5 shrink-0"></i>
+    <span class="break-all">${JSON.stringify(msg.data)}</span>
+  `;
+  feed.prepend(line);
+  if (feed.children.length > 50) feed.lastChild.remove();
+}
+
+// =====================================================================
+// RIDERS
+// =====================================================================
+let activeRiderId = null;
+
+async function loadRiders() {
+  const el = $('#riders-list');
+  try {
+    const res = await fetch(`${API_BASE}/riders`);
+    const riders = await res.json();
+    if (!riders || riders.length === 0) {
+      el.innerHTML = `<div class="text-center py-12 text-gray-400 text-sm bg-white border border-gray-100 rounded-xl">No riders yet. Register one above.</div>`;
+      return;
+    }
+    el.innerHTML = riders.map(r => riderCard(r)).join('');
+    attachRiderActions();
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-red-500 text-sm">Failed to load riders.</div>`;
+  }
+}
+
+function riderCard(r) {
+  const loc = (r.current_lat != null && r.current_lng != null)
+    ? `<span class="text-xs text-gray-500"><i class="fa-solid fa-location-dot mr-1 text-coral-500"></i>${r.current_lat.toFixed(4)}, ${r.current_lng.toFixed(4)}</span>`
+    : `<span class="text-xs text-gray-400">No location</span>`;
+
+  return `
+    <div class="bg-white border border-gray-100 rounded-xl p-4 fade-in shadow-sm hover:shadow-md transition" data-rider-id="${r.id}">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-full bg-coral-50 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-user text-coral-500"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="font-medium text-sm truncate">${r.name}</p>
+            <p class="text-xs text-gray-500">${r.phone}</p>
+          </div>
+        </div>
+        ${statusBadge(r.status)}
+      </div>
+      <div class="mt-3 flex items-center justify-between">
+        ${loc}
+        <div class="flex gap-2">
+          <button data-action="location" class="text-xs text-gray-600 hover:text-coral-500 px-2.5 py-1 rounded-lg border border-gray-200 hover:border-coral-300 transition">
+            <i class="fa-solid fa-location-crosshairs mr-1"></i>Location
+          </button>
+          <button data-action="status" class="text-xs text-gray-600 hover:text-coral-500 px-2.5 py-1 rounded-lg border border-gray-200 hover:border-coral-300 transition">
+            <i class="fa-solid fa-power-off mr-1"></i>Status
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function attachRiderActions() {
+  $$('[data-rider-id]').forEach(card => {
+    const id = card.dataset.riderId;
+    card.querySelector('[data-action="location"]').addEventListener('click', () => openLocationModal(id));
+    card.querySelector('[data-action="status"]').addEventListener('click', () => openStatusModal(id));
+  });
+}
+
+function openLocationModal(id) {
+  activeRiderId = id;
+  $('#location-form').reset();
+  openModal('modal-location');
+}
+
+function openStatusModal(id) {
+  activeRiderId = id;
+  $('#status-form').reset();
+  openModal('modal-status');
+}
+
+// Location form submit
+$('#location-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#location-submit');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i>Saving…`;
+
+  const fd = new FormData(e.target);
+  const body = {
+    lat: parseFloat(fd.get('lat')),
+    lng: parseFloat(fd.get('lng'))
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/riders/${activeRiderId}/location`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error();
+    toast('Location updated', 'success');
+    closeModal('modal-location');
+    loadRiders();
+  } catch {
+    toast('Failed to update location', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-check"></i>Save`;
+  }
+});
+
+// Status form submit
+$('#status-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = new FormData(e.target).get('status');
+  if (!status) {
+    toast('Please select a status', 'error');
+    return;
+  }
+
+  const btn = $('#status-submit');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i>Updating…`;
+
+  try {
+    const res = await fetch(`${API_BASE}/riders/${activeRiderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error();
+    toast('Status updated', 'success');
+    closeModal('modal-status');
+    loadRiders();
+  } catch {
+    toast('Failed to update status', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-check"></i>Update`;
+  }
+});
+
+// =====================================================================
+// ORDERS
+// =====================================================================
+async function loadOrders() {
+  const el = $('#orders-list');
+  try {
+    const res = await fetch(`${API_BASE}/orders`);
+    const orders = await res.json();
+    if (!orders || orders.length === 0) {
+      el.innerHTML = `<div class="text-center py-12 text-gray-400 text-sm bg-white border border-gray-100 rounded-xl">No orders yet. Create one above.</div>`;
+      return;
+    }
+    el.innerHTML = orders.map(o => orderCard(o)).join('');
+    attachOrderActions();
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-red-500 text-sm">Failed to load orders.</div>`;
+  }
+}
+
+function orderCard(o) {
+  const canCancel = o.status === 'pending' || o.status === 'assigned';
+  return `
+    <div class="bg-white border border-gray-100 rounded-xl p-4 fade-in shadow-sm hover:shadow-md transition" data-order-id="${o.id}">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="font-medium text-sm truncate">${o.customer_name}</p>
+          <p class="text-xs text-gray-400 font-mono">${o.id.slice(0, 8)}…</p>
+        </div>
+        ${statusBadge(o.status)}
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
+        <div><i class="fa-solid fa-circle text-emerald-500 mr-1.5 text-[8px]"></i>Pickup ${o.pickup_lat.toFixed(3)}, ${o.pickup_lng.toFixed(3)}</div>
+        <div><i class="fa-solid fa-circle text-coral-500 mr-1.5 text-[8px]"></i>Drop ${o.dropoff_lat.toFixed(3)}, ${o.dropoff_lng.toFixed(3)}</div>
+      </div>
+      ${canCancel ? `
+        <div class="mt-3 flex justify-end">
+          <button data-action="cancel" class="text-xs text-red-500 hover:text-red-600 px-2.5 py-1 rounded-lg border border-red-200 hover:border-red-400 transition">
+            <i class="fa-solid fa-xmark mr-1"></i>Cancel
+          </button>
+        </div>` : ''}
+    </div>
+  `;
+}
+
+function attachOrderActions() {
+  $$('[data-order-id] [data-action="cancel"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('[data-order-id]').dataset.orderId;
+      const ok = await showConfirm('Cancel this order?', 'This order will be marked as cancelled and can no longer be delivered.', 'Yes, cancel');
+      if (!ok) return;
+      try {
+        const res = await fetch(`${API_BASE}/orders/${id}/cancel`, { method: 'PATCH' });
+        if (!res.ok) throw new Error();
+        toast('Order cancelled', 'success');
+        loadOrders();
+      } catch {
+        toast('Failed to cancel order', 'error');
+      }
+    });
+  });
+}
+
+// =====================================================================
+// DELIVERIES
+// =====================================================================
+async function loadDeliveries() {
+  const el = $('#deliveries-list');
+  try {
+    const res = await fetch(`${API_BASE}/deliveries/active`);
+    const deliveries = await res.json();
+    if (!deliveries || deliveries.length === 0) {
+      el.innerHTML = `<div class="text-center py-12 text-gray-400 text-sm bg-white border border-gray-100 rounded-xl md:col-span-2">No active deliveries.</div>`;
+      return;
+    }
+    el.innerHTML = deliveries.map(d => deliveryCard(d)).join('');
+    attachDeliveryActions();
+  } catch (e) {
+    el.innerHTML = `<div class="text-center py-12 text-red-500 text-sm md:col-span-2">Failed to load deliveries.</div>`;
+  }
+}
+
+function deliveryCard(d) {
+  const stages = ['picked_up', 'in_transit', 'delivered'];
+  const currentIdx = d.delivered_at ? 3
+    : d.in_transit_at ? 2
+    : d.picked_up_at ? 1
+    : 0;
+
+  const nextStage = stages[currentIdx];
+  const stageLabels = { picked_up: 'Picked Up', in_transit: 'In Transit', delivered: 'Delivered' };
+
+  return `
+    <div class="bg-white border border-gray-100 rounded-xl p-4 fade-in shadow-sm hover:shadow-md transition" data-delivery-id="${d.id}">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="min-w-0">
+          <p class="font-medium text-sm">Delivery <span class="font-mono text-xs text-gray-400">${d.id.slice(0, 8)}…</span></p>
+          <p class="text-xs text-gray-400 font-mono mt-0.5">Order ${d.order_id.slice(0, 8)}… · Rider ${d.rider_id.slice(0, 8)}…</p>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="flex items-center gap-1 mb-4">
+        ${[0,1,2,3].map(i => `
+          <div class="flex-1 h-1.5 rounded-full ${i <= currentIdx ? 'bg-coral-500' : 'bg-gray-200'}"></div>
+        `).join('')}
+      </div>
+
+      ${nextStage ? `
+        <button data-action="advance" data-next="${nextStage}"
+          class="w-full bg-coral-500 hover:bg-coral-600 text-white text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
+          <i class="fa-solid fa-arrow-right"></i>Mark as ${stageLabels[nextStage]}
+        </button>` : `
+        <div class="text-center text-xs text-emerald-600 py-2 font-medium">
+          <i class="fa-solid fa-circle-check mr-1"></i>Completed
+        </div>`}
+    </div>
+  `;
+}
+
+function attachDeliveryActions() {
+  $$('[data-delivery-id] [data-action="advance"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('[data-delivery-id]').dataset.deliveryId;
+      const next = btn.dataset.next;
+      try {
+        const res = await fetch(`${API_BASE}/deliveries/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: next })
+        });
+        if (!res.ok) throw new Error();
+        toast(`Delivery → ${next.replace('_', ' ')}`, 'success');
+        loadDeliveries();
+      } catch {
+        toast('Failed to advance delivery', 'error');
+      }
+    });
+  });
+}
+
+// =====================================================================
+// FORMS
+// =====================================================================
+$('#rider-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#rider-submit');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i><span>Adding…</span>`;
+
+  const fd = new FormData(e.target);
+  const body = { name: fd.get('name'), phone: fd.get('phone') };
+
+  try {
+    const res = await fetch(`${API_BASE}/riders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error();
+    toast('Rider registered', 'success');
+    e.target.reset();
+    loadRiders();
+  } catch {
+    toast('Failed to register rider', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-plus"></i><span>Add Rider</span>`;
+  }
+});
+
+$('#order-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#order-submit');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i><span>Creating…</span>`;
+
+  const fd = new FormData(e.target);
+  const body = {
+    customer_name: fd.get('customer_name'),
+    pickup_lat: parseFloat(fd.get('pickup_lat')),
+    pickup_lng: parseFloat(fd.get('pickup_lng')),
+    dropoff_lat: parseFloat(fd.get('dropoff_lat')),
+    dropoff_lng: parseFloat(fd.get('dropoff_lng'))
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error();
+    toast('Order created', 'success');
+    e.target.reset();
+    loadOrders();
+    loadDeliveries();
+  } catch {
+    toast('Failed to create order', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i><span>Create Order</span>`;
+  }
+});
+
+// =====================================================================
+// REFRESH BUTTONS
+// =====================================================================
+$('#refresh-riders').addEventListener('click', loadRiders);
+$('#refresh-orders').addEventListener('click', loadOrders);
+$('#refresh-deliveries').addEventListener('click', loadDeliveries);
+$('#clear-events').addEventListener('click', () => {
+  $('#event-feed').innerHTML = '<p class="text-gray-400">Waiting for events…</p>';
+});
+
+// =====================================================================
+// BOOT
+// =====================================================================
+connectWS();
+loadRiders();
+loadOrders();
+loadDeliveries();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS riders;
+DROP TYPE IF EXISTS rider_status;
